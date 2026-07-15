@@ -1,0 +1,5 @@
+node_modules/
+converted/
+converted-ready-for-delete/
+*.log
+.DS_Store
