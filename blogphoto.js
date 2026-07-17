@@ -133,10 +133,21 @@ async function processOne(filePath, outPath, opts) {
     pipeline = pipeline.resize({ width: opts.maxWidth });
   }
 
-  const hasAlpha = meta.hasAlpha;
+  // Some HEIC photos (notably from iPhone Portrait/Live Photo modes) carry an
+  // alpha channel that is fully opaque - a leftover from depth processing,
+  // not real transparency. Treating "has a channel" as "needs PNG" wastes a
+  // huge amount of space on ordinary photos, since PNG is a poor fit for
+  // photographic content. So we check whether the channel is actually used.
+  let needsAlpha = false;
+  if (meta.hasAlpha) {
+    const stats = await img.clone().stats();
+    const alphaChannel = stats.channels[stats.channels.length - 1];
+    needsAlpha = alphaChannel.min < 255;
+  }
+
   let finalPath = outPath;
 
-  if (hasAlpha) {
+  if (needsAlpha) {
     finalPath = outPath.replace(/\.jpg$/i, '.png');
     pipeline = pipeline.png({ quality: opts.quality, compressionLevel: 9, palette: true });
   } else {
