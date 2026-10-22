@@ -33,7 +33,7 @@ function slugify(title) {
 
 function parseArgs(argv) {
   const args = argv.slice(2);
-  const opts = { quality: 82, maxWidth: 2000, order: 'name' };
+  const opts = { quality: 82, maxWidth: 2000, order: 'date' };
   const positional = [];
 
   for (let i = 0; i < args.length; i++) {
@@ -70,6 +70,17 @@ function humanSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+const exifr = require('exifr');
+
+async function getTakenTime(file) {
+  try {
+    const tags = await exifr.parse(file, ['DateTimeOriginal', 'CreateDate']);
+    const d = tags && (tags.DateTimeOriginal || tags.CreateDate);
+    if (d) return new Date(d).getTime();
+  } catch (e) {}
+  return fs.statSync(file).mtimeMs; // fallback if no EXIF date
+}
+
 async function getFiles(dir, order) {
   const entries = fs.readdirSync(dir, { withFileTypes: true })
     .filter(e => e.isFile())
@@ -77,7 +88,12 @@ async function getFiles(dir, order) {
     .map(e => path.join(dir, e.name));
 
   if (order === 'date') {
-    entries.sort((a, b) => fs.statSync(a).mtimeMs - fs.statSync(b).mtimeMs);
+      const times = new Map();
+      for (const f of entries) times.set(f, await getTakenTime(f));
+      entries.sort((a, b) =>
+        times.get(a) - times.get(b) ||
+        a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+      );
   } else {
     entries.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
   }
