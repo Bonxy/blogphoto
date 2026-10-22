@@ -33,7 +33,7 @@ function slugify(title) {
 
 function parseArgs(argv) {
   const args = argv.slice(2);
-  const opts = { quality: 82, maxWidth: null, order: 'name' };
+  const opts = { quality: 82, maxWidth: 2000, order: 'name' };
   const positional = [];
 
   for (let i = 0; i < args.length; i++) {
@@ -199,14 +199,15 @@ async function main() {
   let totalAfter = 0;
   let successCount = 0;
   const failures = [];
-
+    
+  const padWidth = Math.max(2, String(files.length).length);
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     const willBeMultiple = files.length > 1;
 
     try {
       const before = fs.statSync(file).size;
-      const suffix = willBeMultiple ? `-${successCount + 1}` : '';
+      const suffix = willBeMultiple ? `-${String(successCount + 1).padStart(padWidth, '0')}` : '';
       const outPath = path.join(opts.outputDir, `${slug}${suffix}.jpg`);
 
       const finalPath = await processOne(file, outPath, opts);
